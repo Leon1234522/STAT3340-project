@@ -1,0 +1,171 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+#1.Data visualization
+fishdata <- read.csv("C:/Users/jerry/Desktop/project.csv", header=TRUE)
+pairs(fishdata, main="analysis")
+typeof(fishdata)
+table(fishdata$Weight)
+a1=sub("Bream","0",fishdata$species)
+a2=sub('Parkki','1',a1)
+a3=sub('Perch','2',a2)
+a4=sub('Pike','3',a3)
+a5=sub('Roach','4',a4)
+a6=sub("Smelt",'5',a5)
+a7=sub("Whitefish",'6',a6)
+fishdata$species=a7
+fishdata$species<-as.numeric(fishdata$species)
+#this is the analysis of two variable.
+#we can saw from graph, the lengh 1, length 2, length 3 has strongest linear relationship with each other, which is a linear in the graph
+#We use 0,1,2,3,4,5,6 to represent Bream, Parkki, Perch, Pike, Roach, Smelt, Whitefish respectively.
+
+```
+
+```{r}
+#2.correlation matrix
+cov(fishdata)
+
+```
+
+```{r}
+#3.corr
+cor(fishdata)
+```
+
+```{r}
+#4. model selection
+library(olsrr)
+model=lm(Weight~species+Length1+Length2+Length3+Height+Width,data=fishdata)
+allpossible=ols_step_all_possible(model)
+allpossible
+plot(allpossible)
+
+#1. more independent variable means larger R square. R^2=SSR/SST
+
+#2. the lower the cp the better variable, which 16, 26, 31 is better.
+
+#3. adj.R^2 is not influence by the number of variables. 
+
+#4. the smaller AIC, the better variables, which is 16, 26
+
+```
+
+
+```{r}
+fish.res=resid(model)
+plot(fishdata$Weight,fish.res, ylab="Residuals", xlab="weight", main="fishdata")
+
+#it has a problem,
+
+#it obeys the regression assumption, the residual variance should be a normal number. the graph shows that the residual variance is not constant. besides, the residual should be random, however in this graph, it seems like an x^2 relationship
+
+#for correction, we should take the natural log of y
+
+```
+
+
+```{r}
+#best subset regression
+
+model=lm(Weight~species+Length1+Length2+Length3+Height+Width,data=fishdata)
+best=ols_step_best_subset(model)
+best
+plot(best)
+
+#so the best number of variable should be 4,because C(p) and AIC are the smallest.
+```
+
+
+```{r}
+#backwards analysis
+
+#we set up alpha=0.01
+
+summary(lm(Weight~species+Length1+Length2+Length3+Height+Width,data=fishdata))
+#find the largest p-value which is width that 0.72197 and larger than the alpha, and we delete it,then we have a new model and do regression analysis again
+```
+
+```{r}
+summary(lm(Weight~species+Length1+Length3+Height+Length2,data=fishdata))
+#find the largest p-value which is Length1 which is 0.474379, and larger than the alpha, and we delete it,then we have a new model and do regression analysis again
+
+```
+
+```{r}
+summary(lm(Weight~species+Length2+Length3+Height,data=fishdata))
+
+#at this time we find that p-value of Length3>alpha, so we delete length 3. Our final model is Weight~species+Length1+Height
+```
+
+```{r}
+#5. modify mnodel
+
+#by checking if that suitable gauss-markov assumption
+
+summary(lm(Weight~species+Length2+Height,data=fishdata))
+#we can see the bestmodel is Weight~species+Length1+Height
+anova(lm(Weight~species+Length2+Height,data=fishdata))
+#The anova table of this model
+plot(lm(Weight~species+Length2+Height,data=fishdata))
+
+
+
+#P1. residual vs fitted
+
+#the model should be modified, the residual should be randomly distributed 
+
+#P2. normal Q-Q plot
+
+#the model suitable for the normal distribution, however there is few unsual point. 
+
+#P3. scale-location plot
+
+#We can see that there is relationship between FItted values and standard variance. 
+
+#P4. residual vs leverage
+
+#There are few leverage points. In reality, many fish can grow very large or small in the same growth environment, possibly due to genetic mutations or other factors. And we can see from the figure that there are only few leverage points, which are in line with the actual situation.
+```
+
+
+```{r}
+library(MPV)
+library(car)
+length2=fishdata$Length2
+length3=fishdata$Length3
+height=fishdata$Height
+weight=fishdata$Weight
+species=fishdata$species
+
+s2<-sqrt(sum((length2-mean(length2))^2)/(159-1))
+s3<-sqrt(sum((height-mean(height))^2)/(159-1))
+s1<-sqrt(sum((species-mean(species))^2)/(159-1))
+sy<-sqrt(sum((weight-mean(weight))^2)/(159-1))
+
+
+
+z2<-(length2-mean(length2))/s1
+z3<-(height-mean(height))/s3
+z1<-(species-mean(species))/s3
+ys<-(weight-mean(weight))/sy
+fishmodel1=lm(ys~z1+z2)
+fishmodel2=lm(ys~z1+z3)
+fishmodel3=lm(ys~z3+z2)
+vif(fishmodel1)
+vif(fishmodel2)
+vif(fishmodel3)
+```
+1.08641<10, 1.948989<10 and 1.689513<10. Therefore, we cannot see Species, Length2 and Height have serious molticolinearity. So our final model should be Weight~species+Length2+Height (yhat= -632.942+ 30.481x1+ 24.456x2+ 29.746x3).
+
+
+
+
+
+
+
+
+
